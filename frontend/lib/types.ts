@@ -1,0 +1,4 @@
+export type Inputs = { presetId: string; branchName: string; seed: number; runs: number; horizonYears: number; initialValue: number; annualContribution: number; expectedAnnualReturn: number; annualVolatility: number; inflationRate: number; targetValue: number };
+export type Metric = { label: string; value: number; format: 'percent' | 'currency'; detail: string };
+export type Simulation = { id: string; branchName: string; seed: number; runs: number; horizonYears: number; inputs: Inputs; percentiles: Record<'p10' | 'p50' | 'p90', number>; histogram: {start: number; end: number; count: number}[]; metrics: Metric[]; assumptions: string[]; caveats: string[] };
+export const initialInputs: Inputs = { presetId: 'balanced-portfolio', branchName: 'Base timeline', seed: 42, runs: 5000, horizonYears: 10, initialValue: 10000, annualContribution: 2000, expectedAnnualReturn: 0.06, annualVolatility: 0.12, inflationRate: 0.025, targetValue: 40000 };
