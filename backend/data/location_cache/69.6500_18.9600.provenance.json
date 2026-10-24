@@ -1,0 +1,12 @@
+{
+  "createdAt": "2026-10-24T16:36:20.449719+00:00",
+  "rows": 23444,
+  "sourcePath": "/Users/kr/oxhack/backend/data/aurora_hours.csv",
+  "timestampConvention": "UTC",
+  "weatherModel": "ERA5",
+  "years": [
+    2024,
+    2025,
+    2026
+  ]
+}

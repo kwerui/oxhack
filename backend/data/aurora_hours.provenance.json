@@ -1,0 +1,222 @@
+{
+  "createdAt": "2026-10-24T16:08:49.238647+00:00",
+  "locations": {
+    "Reykjav\u00edk": {
+      "2024": {
+        "joinedHours": 8570,
+        "missingBecauseOmniUnavailable": 214,
+        "missingBecauseWeatherUnavailable": 0,
+        "weather": {
+          "acceptedHours": 8784,
+          "downloadedAt": "2026-10-24T16:08:40.926478+00:00",
+          "model": "ERA5",
+          "rawHours": 8784,
+          "rejectedHours": 0,
+          "requestedEnd": "2024-12-31",
+          "requestedStart": "2024-01-01",
+          "source": "https://archive-api.open-meteo.com/v1/archive?latitude=64.15&longitude=-21.94&start_date=2024-01-01&end_date=2024-12-31&hourly=temperature_2m%2Ccloud_cover%2Cwind_speed_10m%2Cpressure_msl&timezone=UTC&models=era5",
+          "sourceMetadata": {},
+          "units": {
+            "cloud_cover": "%",
+            "pressure_msl": "hPa",
+            "temperature_2m": "\u00b0C",
+            "time": "iso8601",
+            "wind_speed_10m": "km/h"
+          }
+        }
+      },
+      "2025": {
+        "joinedHours": 8687,
+        "missingBecauseOmniUnavailable": 73,
+        "missingBecauseWeatherUnavailable": 0,
+        "weather": {
+          "acceptedHours": 8760,
+          "downloadedAt": "2026-10-24T16:08:44.342713+00:00",
+          "model": "ERA5",
+          "rawHours": 8760,
+          "rejectedHours": 0,
+          "requestedEnd": "2025-12-31",
+          "requestedStart": "2025-01-01",
+          "source": "https://archive-api.open-meteo.com/v1/archive?latitude=64.15&longitude=-21.94&start_date=2025-01-01&end_date=2025-12-31&hourly=temperature_2m%2Ccloud_cover%2Cwind_speed_10m%2Cpressure_msl&timezone=UTC&models=era5",
+          "sourceMetadata": {},
+          "units": {
+            "cloud_cover": "%",
+            "pressure_msl": "hPa",
+            "temperature_2m": "\u00b0C",
+            "time": "iso8601",
+            "wind_speed_10m": "km/h"
+          }
+        }
+      },
+      "2026": {
+        "joinedHours": 6187,
+        "missingBecauseOmniUnavailable": 365,
+        "missingBecauseWeatherUnavailable": 0,
+        "weather": {
+          "acceptedHours": 6552,
+          "downloadedAt": "2026-10-24T16:08:46.901186+00:00",
+          "model": "ERA5",
+          "rawHours": 6552,
+          "rejectedHours": 0,
+          "requestedEnd": "2026-09-30",
+          "requestedStart": "2026-01-01",
+          "source": "https://archive-api.open-meteo.com/v1/archive?latitude=64.15&longitude=-21.94&start_date=2026-01-01&end_date=2026-09-30&hourly=temperature_2m%2Ccloud_cover%2Cwind_speed_10m%2Cpressure_msl&timezone=UTC&models=era5",
+          "sourceMetadata": {},
+          "units": {
+            "cloud_cover": "%",
+            "pressure_msl": "hPa",
+            "temperature_2m": "\u00b0C",
+            "time": "iso8601",
+            "wind_speed_10m": "km/h"
+          }
+        }
+      }
+    },
+    "Troms\u00f8": {
+      "2024": {
+        "joinedHours": 8570,
+        "missingBecauseOmniUnavailable": 214,
+        "missingBecauseWeatherUnavailable": 0,
+        "weather": {
+          "acceptedHours": 8784,
+          "downloadedAt": "2026-10-24T16:08:33.204594+00:00",
+          "model": "ERA5",
+          "rawHours": 8784,
+          "rejectedHours": 0,
+          "requestedEnd": "2024-12-31",
+          "requestedStart": "2024-01-01",
+          "source": "https://archive-api.open-meteo.com/v1/archive?latitude=69.65&longitude=18.96&start_date=2024-01-01&end_date=2024-12-31&hourly=temperature_2m%2Ccloud_cover%2Cwind_speed_10m%2Cpressure_msl&timezone=UTC&models=era5",
+          "sourceMetadata": {},
+          "units": {
+            "cloud_cover": "%",
+            "pressure_msl": "hPa",
+            "temperature_2m": "\u00b0C",
+            "time": "iso8601",
+            "wind_speed_10m": "km/h"
+          }
+        }
+      },
+      "2025": {
+        "joinedHours": 8687,
+        "missingBecauseOmniUnavailable": 73,
+        "missingBecauseWeatherUnavailable": 0,
+        "weather": {
+          "acceptedHours": 8760,
+          "downloadedAt": "2026-10-24T16:08:36.308941+00:00",
+          "model": "ERA5",
+          "rawHours": 8760,
+          "rejectedHours": 0,
+          "requestedEnd": "2025-12-31",
+          "requestedStart": "2025-01-01",
+          "source": "https://archive-api.open-meteo.com/v1/archive?latitude=69.65&longitude=18.96&start_date=2025-01-01&end_date=2025-12-31&hourly=temperature_2m%2Ccloud_cover%2Cwind_speed_10m%2Cpressure_msl&timezone=UTC&models=era5",
+          "sourceMetadata": {},
+          "units": {
+            "cloud_cover": "%",
+            "pressure_msl": "hPa",
+            "temperature_2m": "\u00b0C",
+            "time": "iso8601",
+            "wind_speed_10m": "km/h"
+          }
+        }
+      },
+      "2026": {
+        "joinedHours": 6187,
+        "missingBecauseOmniUnavailable": 365,
+        "missingBecauseWeatherUnavailable": 0,
+        "weather": {
+          "acceptedHours": 6552,
+          "downloadedAt": "2026-10-24T16:08:38.977079+00:00",
+          "model": "ERA5",
+          "rawHours": 6552,
+          "rejectedHours": 0,
+          "requestedEnd": "2026-09-30",
+          "requestedStart": "2026-01-01",
+          "source": "https://archive-api.open-meteo.com/v1/archive?latitude=69.65&longitude=18.96&start_date=2026-01-01&end_date=2026-09-30&hourly=temperature_2m%2Ccloud_cover%2Cwind_speed_10m%2Cpressure_msl&timezone=UTC&models=era5",
+          "sourceMetadata": {},
+          "units": {
+            "cloud_cover": "%",
+            "pressure_msl": "hPa",
+            "temperature_2m": "\u00b0C",
+            "time": "iso8601",
+            "wind_speed_10m": "km/h"
+          }
+        }
+      }
+    }
+  },
+  "omni": {
+    "2024": {
+      "acceptedHours": 8570,
+      "downloadedAt": "2026-10-24T16:08:09.914860+00:00",
+      "expectedHours": 8784,
+      "firstAvailableHour": "2024-01-01T00:00",
+      "firstMissingHour": "2024-02-14T12:00",
+      "lastAvailableHour": "2024-12-31T23:00",
+      "missingHours": 214,
+      "missingWithinAvailableRange": 214,
+      "rawRecords": 8784,
+      "rejectedByReason": {
+        "bzFillValue": 32,
+        "solarWindSpeedFillValue": 182
+      },
+      "rejectedRecords": 214,
+      "source": "https://cdaweb.gsfc.nasa.gov/pub/data/omni/low_res_omni/omni2_2024.dat",
+      "sourceMetadata": {
+        "Content-Length": "2881152",
+        "ETag": "\"2bf680-6459c3bf6ac75\"",
+        "Last-Modified": "Wed, 10 Dec 2025 17:19:43 GMT"
+      }
+    },
+    "2025": {
+      "acceptedHours": 8687,
+      "downloadedAt": "2026-10-24T16:08:18.836274+00:00",
+      "expectedHours": 8760,
+      "firstAvailableHour": "2025-01-01T00:00",
+      "firstMissingHour": "2025-01-07T23:00",
+      "lastAvailableHour": "2025-12-31T23:00",
+      "missingHours": 73,
+      "missingWithinAvailableRange": 73,
+      "rawRecords": 8760,
+      "rejectedByReason": {
+        "bzFillValue": 48,
+        "solarWindSpeedFillValue": 25
+      },
+      "rejectedRecords": 73,
+      "source": "https://cdaweb.gsfc.nasa.gov/pub/data/omni/low_res_omni/omni2_2025.dat",
+      "sourceMetadata": {
+        "Content-Length": "2873280",
+        "ETag": "\"2bd7c0-653e79ca6fc35\"",
+        "Last-Modified": "Wed, 10 Jun 2026 15:08:11 GMT"
+      }
+    },
+    "2026": {
+      "acceptedHours": 6187,
+      "downloadedAt": "2026-10-24T16:08:26.293865+00:00",
+      "expectedHours": 8760,
+      "firstAvailableHour": "2026-01-01T00:00",
+      "firstMissingHour": "2026-01-27T22:00",
+      "lastAvailableHour": "2026-09-30T01:00",
+      "missingHours": 2573,
+      "missingWithinAvailableRange": 343,
+      "rawRecords": 8760,
+      "rejectedByReason": {
+        "bzFillValue": 2559,
+        "solarWindSpeedFillValue": 14
+      },
+      "rejectedRecords": 2573,
+      "source": "https://cdaweb.gsfc.nasa.gov/pub/data/omni/low_res_omni/omni2_2026.dat",
+      "sourceMetadata": {
+        "Content-Length": "2873280",
+        "ETag": "\"2bd7c0-65df70a73bae2\"",
+        "Last-Modified": "Fri, 16 Oct 2026 15:44:33 GMT"
+      }
+    }
+  },
+  "outputRows": 46888,
+  "timestampConvention": "UTC hour start; OMNI Kp labels a three-hour interval",
+  "yearsRequested": [
+    2024,
+    2025,
+    2026
+  ]
+}
