@@ -1,4 +1,4 @@
-# TimeFork task list
+# AuroraTime task list
 
 - [x] Simulation contract and deterministic backend engine
 - [x] Simulation API validation and tests

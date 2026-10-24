@@ -1,8 +1,8 @@
-# Spec: TimeFork hackathon starter
+# Spec: AuroraTime hackathon starter
 
 ## Objective
 
-TimeFork is a local web application for exploring **illustrative** decision scenarios. A user starts from a preset, changes inputs, creates named branches, and compares distributions from deterministic seeded Monte Carlo runs. The first preset is portfolio allocation; the simulation contract is domain-configurable so a STEM model can be added without changing the UI shape. It does not give financial, medical, engineering, or investment advice, and it will visibly state the model assumptions and limitations.
+AuroraTime is a local web application for exploring **illustrative** decision scenarios. A user starts from a preset, changes inputs, creates named branches, and compares distributions from deterministic seeded Monte Carlo runs. The first preset is portfolio allocation; the simulation contract is domain-configurable so a STEM model can be added without changing the UI shape. It does not give financial, medical, engineering, or investment advice, and it will visibly state the model assumptions and limitations.
 
 ### Success criteria
 

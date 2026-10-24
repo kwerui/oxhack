@@ -1,4 +1,4 @@
-# Implementation Plan: TimeFork
+# Implementation Plan: AuroraTime
 
 This starter is organised around a simulation contract first, then a single visual comparison flow. The API is stateless and local, avoiding premature persistence and credentials.
 

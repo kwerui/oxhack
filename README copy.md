@@ -1,8 +1,10 @@
-# TimeFork
+# AuroraTime
 
-TimeFork is a hackathon-ready decision-scenario explorer. It lets people fork named futures, change assumptions, and compare reproducible Monte Carlo outcome distributions. The default portfolio preset is illustrative; the included research-project preset demonstrates the same interface for broader STEM decisions.
+*Explore the past. Predict the night.*
 
-> **Important:** TimeFork is an uncertainty and sensitivity tool, not a prediction engine. It does not provide financial, medical, engineering, or investment advice.
+AuroraTime is a hackathon-ready decision-scenario explorer. It lets people fork named futures, change assumptions, and compare reproducible Monte Carlo outcome distributions. The default portfolio preset is illustrative; the included research-project preset demonstrates the same interface for broader STEM decisions.
+
+> **Important:** AuroraTime is an uncertainty and sensitivity tool, not a prediction engine. It does not provide financial, medical, engineering, or investment advice.
 
 ## What is included
 

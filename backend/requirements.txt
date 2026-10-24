@@ -1,5 +1,7 @@
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-numpy>=2.3.0
-httpx==0.28.1
-pytest==8.3.4
+fastapi>=0.115,<1
+uvicorn>=0.34,<1
+numpy>=2.2,<3
+scikit-learn>=1.4,<2
+httpx>=0.28,<1
+pytest>=8,<10
+astral==3.2
