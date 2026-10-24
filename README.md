@@ -42,10 +42,10 @@ Check `http://localhost:8000/health` for `{"status":"ok","dataReady":true}`.
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev -- --hostname 0.0.0.0
 ```
 
-Open **http://localhost:3000**. Both terminals must remain running. In particular, `npm run dev` belongs in `frontend`, not the repository root.
+Open **http://localhost:3000** on the host, or **http://&lt;host-ip&gt;:3000** from a teammate's device on the same network. Both terminals must remain running. The Next.js server forwards browser requests to `/api/v1/*` to the local Python service, so teammates only need the frontend URL; port 8000 is not exposed to their browser. In particular, `npm run dev -- --hostname 0.0.0.0` belongs in `frontend`, not the repository root.
 
 ### Tests
 

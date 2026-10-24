@@ -72,12 +72,10 @@ export type ModelResult = {
   limitations: string;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
-
 export async function runModel(features: Feature[], location: string): Promise<ModelResult> {
   let response: Response;
   try {
-    response = await fetch(`${API_URL}/api/v1/aurora/evaluate`, {
+    response = await fetch('/api/v1/aurora/evaluate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ features, location }),

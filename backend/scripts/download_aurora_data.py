@@ -33,7 +33,7 @@ def parse_omni_line(line):
     The later optional field does not change the column positions we need.
     """
     parts = line.split()
-    if len(parts) not in (56, 57):
+    if len(parts) not in (55, 56, 57):
         return None
     try:
         year, day, hour = int(parts[0]), int(parts[1]), int(parts[2])
