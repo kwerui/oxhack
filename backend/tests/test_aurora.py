@@ -74,6 +74,25 @@ def test_model_scores_unseen_hours_from_selected_city(tmp_path):
     assert 0 <= result['metrics']['baselineBrier'] <= 1
 
 
+def test_compare_models_uses_the_same_held_out_hours(tmp_path):
+    result = evaluate_model(
+        ModelRequest(
+            features=['cloud', 'kp', 'bz', 'moon_altitude'],
+            location='Tromsø',
+            model='compare',
+        ),
+        write_fixture(tmp_path),
+    )
+
+    assert result['modelSelection'] == 'compare'
+    assert [run['name'] for run in result['modelRuns']] == ['Logistic Regression', 'Random Forest']
+    assert result['modelRuns'][0]['hours'] == result['modelRuns'][1]['hours']
+    for run in result['modelRuns']:
+        assert 0 <= run['metrics']['brier'] <= 1
+        assert 0 <= run['metrics']['f1'] <= 1
+        assert run['metrics']['positiveCount'] + run['metrics']['negativeCount'] == result['testCount']
+
+
 def test_every_variable_is_selectable(tmp_path):
     result = evaluate_model(ModelRequest(features=list(FEATURES), location='Reykjavík'), write_fixture(tmp_path))
     assert len(result['features']) == 12
