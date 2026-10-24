@@ -1,0 +1,3 @@
+# Offline experiment only; the public AuroraTime API does not import XGBoost.
+-r requirements.txt
+xgboost>=3.4,<4
