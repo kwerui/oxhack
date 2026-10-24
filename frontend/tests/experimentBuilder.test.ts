@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyLocationSelection, CUSTOM_FEATURES, differsFromEvaluatedExperiment, evaluatedPeriods, PRESET_FEATURES, formatReverseGeocodedLabel, toggleFeature } from '../lib/experimentBuilder';
+import { applyLocationSelection, compareEvaluatedExperiments, CUSTOM_FEATURES, differsFromEvaluatedExperiment, evaluatedPeriods, PRESET_FEATURES, formatReverseGeocodedLabel, toggleFeature } from '../lib/experimentBuilder';
 import type { ModelResult } from '../lib/aurora';
 
 const evaluated: ModelResult = {
@@ -22,6 +22,8 @@ describe('experiment builder state', () => {
     expect(PRESET_FEATURES.weather).toEqual(['temperature', 'cloud', 'wind', 'pressure']);
     expect(PRESET_FEATURES.space).toEqual(['temperature', 'cloud', 'wind', 'pressure', 'kp', 'solar_speed', 'bz']);
     expect(CUSTOM_FEATURES).toContain('moon_altitude');
+    expect(CUSTOM_FEATURES).not.toContain('light_pollution');
+    expect(CUSTOM_FEATURES).not.toContain('latitude');
   });
 
   it('turns a custom feature on and off without hidden additions', () => {
@@ -54,5 +56,23 @@ describe('experiment builder state', () => {
       ['Validation', '2025-01-01–2025-12-31'],
       ['Test', '2026-01-01–2026-12-31'],
     ]);
+  });
+
+  it('reports feature, model, location, and test-period changes between saved forks', () => {
+    const changed = {
+      ...evaluated,
+      features: ['cloud', 'kp'] as ModelResult['features'],
+      modelSelection: 'random_forest' as const,
+      coordinates: { latitude: 51.76, longitude: -1.26 },
+      testUntil: '2026-11-30',
+    };
+
+    expect(compareEvaluatedExperiments(evaluated, changed)).toEqual({
+      addedFeatures: [],
+      removedFeatures: ['temperature', 'wind', 'pressure', 'solar_speed', 'bz'],
+      modelChanged: true,
+      locationChanged: true,
+      testPeriodChanged: true,
+    });
   });
 });

@@ -33,13 +33,17 @@ FEATURES = {
     'pressure': 'Sea-level pressure (hPa)',
     'kp': 'Geomagnetic Kp index',
     'solar_speed': 'Solar wind speed (km/s)',
-    'latitude': 'Geographic latitude (°)',
     'bz': 'Interplanetary magnetic field Bz (nT)',
     'sun_elevation': 'Sun elevation (°)',
     'moon_phase': 'Moon illuminated fraction (%)',
     'moon_altitude': 'Moon altitude (°)',
-    'light_pollution': 'Assumed Bortle class (1–9)',
 }
+
+# A numeric Bortle value exists in legacy city files, but it is an assumption
+# rather than a measured worldwide light-pollution source. It must not enter a
+# model or appear as an evaluated variable.
+UNSUPPORTED_FEATURES = {'light_pollution'}
+NON_PREDICTIVE_FEATURES = {'latitude'}
 
 # The sun and moon positions 24 hours from now can be calculated TODAY,
 # without knowing future weather. They are safe future-time inputs.
@@ -153,8 +157,8 @@ def _metrics(y_true, probabilities, threshold, training_prevalence):
     auc = float(roc_auc_score(y_true, probabilities)) if len(np.unique(y_true)) == 2 else None
     return {
         'threshold': round(float(threshold), 2),
-        'brier': round(float(brier_score_loss(y_true, probabilities)), 4),
-        'baselineBrier': round(float(brier_score_loss(y_true, baseline)), 4),
+        'brier': round(float(brier_score_loss(y_true, probabilities)), 6),
+        'baselineBrier': round(float(brier_score_loss(y_true, baseline)), 6),
         'precision': round(float(precision_score(y_true, predicted_classes, zero_division=0)), 3),
         'recall': round(float(recall_score(y_true, predicted_classes, zero_division=0)), 3),
         'f1': round(float(f1_score(y_true, predicted_classes, zero_division=0)), 3),
@@ -194,21 +198,30 @@ def evaluate_run(model_name, x_train, y_train, x_validation, y_validation, x_tes
 
 
 def comparison_explanation(runs):
-    """Describe only measured differences; never declare a universal winner."""
+    """Lead with a short, evidence-only description of detection performance."""
+    def summary(run):
+        metrics = run['metrics']
+        text = (f"{run['name']} detected {metrics['truePositive']} of {metrics['positiveCount']} favourable periods, "
+                f"missed {metrics['falseNegative']}, and raised {metrics['falsePositive']} false alarms.")
+        if metrics['falseNegative'] > metrics['truePositive']:
+            text += ' It missed most favourable periods.'
+        elif metrics['precision'] <= 0.1:
+            text += ' Its positive predictions were rarely correct.'
+        return text
+
     if len(runs) == 1:
-        return 'These scores describe this model on later historical hours it did not train on.'
+        return summary(runs[0])
 
     logistic, forest = runs
-    statements = []
-    if forest['metrics']['recall'] > logistic['metrics']['recall']:
-        statements.append('Random Forest found more suitable historical periods (higher recall).')
-    elif logistic['metrics']['recall'] > forest['metrics']['recall']:
-        statements.append('Logistic Regression found more suitable historical periods (higher recall).')
-    if forest['metrics']['brier'] < logistic['metrics']['brier']:
-        statements.append('Random Forest had lower probability error (Brier score).')
-    elif logistic['metrics']['brier'] < forest['metrics']['brier']:
-        statements.append('Logistic Regression had lower probability error (Brier score).')
-    return ' '.join(statements) or 'The models had the same recall and probability error on this historical test.'
+    same_detection = all(
+        logistic['metrics'][key] == forest['metrics'][key]
+        for key in ('truePositive', 'falsePositive', 'falseNegative')
+    )
+    if same_detection:
+        return f"Both models performed the same: {summary(logistic)} Neither is a clear practical winner."
+
+    better_recall = forest if forest['metrics']['recall'] > logistic['metrics']['recall'] else logistic
+    return f"{summary(logistic)} {summary(forest)} {better_recall['name']} found more favourable periods."
 
 
 def location_rows(request: LocationRequest, data_path=DATA_PATH):
@@ -245,6 +258,10 @@ def prepare_location(request: LocationRequest, data_path=DATA_PATH):
 
 def evaluate_model(request: ModelRequest, data_path=DATA_PATH):
     chosen = list(dict.fromkeys(request.features))
+    if any(feature in UNSUPPORTED_FEATURES for feature in chosen):
+        raise HTTPException(status_code=422, detail='Light pollution cannot be evaluated because no measured worldwide source is bundled; it is not substituted with an assumed value.')
+    if any(feature in NON_PREDICTIVE_FEATURES for feature in chosen):
+        raise HTTPException(status_code=422, detail='Latitude cannot be evaluated as an hourly predictor because it is constant for a single-location experiment. Coordinates remain in use for data retrieval and astronomical calculations.')
     if any(feature not in FEATURES for feature in chosen):
         raise HTTPException(status_code=422, detail='Unknown input variable selected.')
 
@@ -274,8 +291,6 @@ def evaluate_model(request: ModelRequest, data_path=DATA_PATH):
     runs = [evaluate_run(name, x_train, y_train, x_validation, y_validation, x_test, y_test, test) for name in selected_models]
     primary = runs[0]
     warnings = []
-    if 'latitude' in chosen or 'light_pollution' in chosen:
-        warnings.append('Latitude and assumed light pollution are constants within one location, so they cannot explain hourly variation.')
     if min(int(y_train.sum()), int(y_validation.sum()), int(y_test.sum())) < 25:
         warnings.append('At least one period has fewer than 25 positive proxy labels; precision, recall and threshold estimates are unstable.')
 
@@ -300,12 +315,11 @@ def evaluate_model(request: ModelRequest, data_path=DATA_PATH):
         'hours': primary['hours'],
         'modelRuns': runs,
         'comparisonExplanation': comparison_explanation(runs),
-        'warnings': warnings + (['This location uses a freshly assembled, location-specific multi-year backtest. Light pollution is not included because no measured worldwide source is bundled.'] if has_coordinates else []),
+        'warnings': warnings + (['This location uses a freshly assembled, location-specific multi-year backtest. Light pollution is unavailable because no measured worldwide source is bundled.'] if has_coordinates else []),
         'limitations': (
             'This is a historical test of a rule-defined conditions proxy, not confirmed aurora '
             'sightings or live forecasting. The target only uses Kp, cloud cover and Sun elevation. '
-            'Thresholds are selected on 2025 and 2026 is evaluated once. Moon, temperature and wind may influence viewing comfort; light pollution is an '
-            'assumed Bortle class (not measured). Location is geographic rather than geomagnetic '
+            'Thresholds are selected on 2025 and 2026 is evaluated once. Moon, temperature and wind may influence viewing comfort; light pollution is not evaluated because no measured source is bundled. Location is geographic rather than geomagnetic '
             'latitude. NASA hourly data and weather reanalysis are not real-time forecasts.'
         ),
     }

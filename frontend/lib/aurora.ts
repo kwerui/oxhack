@@ -33,18 +33,12 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
   },
   {
     title: 'Sky and location',
-    note: 'Known future Sun/Moon positions; geographic latitude (not magnetic latitude)',
+    note: 'Known future Sun/Moon positions calculated from the selected coordinates',
     variables: [
-      { key: 'latitude', name: 'Location / latitude', unit: 'degrees' },
       { key: 'sun_elevation', name: 'Darkness (sun elevation)', unit: 'degrees' },
       { key: 'moon_phase', name: 'Moon phase (illumination)', unit: '%' },
       { key: 'moon_altitude', name: 'Moon altitude', unit: 'degrees' },
     ],
-  },
-  {
-    title: 'Site assumption',
-    note: 'Fixed example Bortle class per city; this is NOT measured light pollution',
-    variables: [{ key: 'light_pollution', name: 'Light pollution', unit: 'Bortle 1–9' }],
   },
 ] ;
 
@@ -64,6 +58,10 @@ export type ModelMetrics = {
   positiveRate: number;
   positiveCount: number;
   negativeCount: number;
+  truePositive: number;
+  falsePositive: number;
+  trueNegative: number;
+  falseNegative: number;
 };
 
 export type ModelRun = {

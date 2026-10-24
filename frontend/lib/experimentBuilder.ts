@@ -7,7 +7,7 @@ export const PRESET_FEATURES: Record<'weather' | 'space', Feature[]> = {
 
 export const CUSTOM_FEATURES: Feature[] = [
   'temperature', 'cloud', 'wind', 'pressure', 'kp', 'solar_speed', 'bz',
-  'latitude', 'sun_elevation', 'moon_phase', 'moon_altitude', 'light_pollution',
+  'sun_elevation', 'moon_phase', 'moon_altitude',
 ];
 
 type ReverseAddress = {
@@ -55,4 +55,23 @@ export function evaluatedPeriods(result: Pick<ModelResult, 'trainFrom' | 'trainU
     ['Validation', `${date(result.validationFrom)}–${date(result.validationUntil)}`],
     ['Test', `${date(result.testFrom)}–${date(result.testUntil)}`],
   ] as const;
+}
+
+export type ForkDifference = {
+  addedFeatures: Feature[];
+  removedFeatures: Feature[];
+  modelChanged: boolean;
+  locationChanged: boolean;
+  testPeriodChanged: boolean;
+};
+
+export function compareEvaluatedExperiments(first: ModelResult, second: ModelResult): ForkDifference {
+  return {
+    addedFeatures: second.features.filter(feature => !first.features.includes(feature)),
+    removedFeatures: first.features.filter(feature => !second.features.includes(feature)),
+    modelChanged: first.modelSelection !== second.modelSelection,
+    locationChanged: first.coordinates?.latitude !== second.coordinates?.latitude
+      || first.coordinates?.longitude !== second.coordinates?.longitude,
+    testPeriodChanged: first.testFrom !== second.testFrom || first.testUntil !== second.testUntil,
+  };
 }

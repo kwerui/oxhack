@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException
 
 from app import aurora
-from app.aurora import FEATURES, LocationRequest, ModelRequest, evaluate_model, make_examples, prepare_location, viewing_proxy
+from app.aurora import FEATURES, LocationRequest, ModelRequest, comparison_explanation, evaluate_model, make_examples, prepare_location, viewing_proxy
 from app.location_data import cache_path_for, coordinate_label
 from scripts.download_aurora_data import parse_omni_line
 
@@ -40,7 +40,9 @@ def write_fixture(tmp_path):
     path = tmp_path / 'hours.csv'
     rows = fixture_rows()
     with path.open('w', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=['time', 'location', *FEATURES])
+        # Legacy source rows retain unsupported columns, but neither may become
+        # part of the selectable model feature catalogue.
+        writer = csv.DictWriter(file, fieldnames=['time', 'location', *FEATURES, 'latitude', 'light_pollution'])
         writer.writeheader()
         writer.writerows(rows)
     return path
@@ -103,12 +105,40 @@ def test_compare_models_uses_the_same_held_out_hours(tmp_path):
         assert 0 <= run['metrics']['brier'] <= 1
         assert 0 <= run['metrics']['f1'] <= 1
         assert run['metrics']['positiveCount'] + run['metrics']['negativeCount'] == result['testCount']
+        assert run['metrics']['truePositive'] + run['metrics']['falseNegative'] == run['metrics']['positiveCount']
+        assert run['metrics']['truePositive'] + run['metrics']['falsePositive'] <= result['testCount']
 
 
 def test_every_variable_is_selectable(tmp_path):
     result = evaluate_model(ModelRequest(features=list(FEATURES), location='Reykjavík'), write_fixture(tmp_path))
-    assert len(result['features']) == 12
+    assert len(result['features']) == 10
     assert result['location'] == 'Reykjavík'
+
+
+def test_unsupported_light_pollution_is_rejected_instead_of_using_an_assumption(tmp_path):
+    with pytest.raises(HTTPException, match='Light pollution') as error:
+        evaluate_model(ModelRequest(features=['light_pollution']), write_fixture(tmp_path))
+    assert error.value.status_code == 422
+
+
+def test_constant_latitude_is_rejected_as_an_hourly_model_feature(tmp_path):
+    with pytest.raises(HTTPException, match='Latitude') as error:
+        evaluate_model(ModelRequest(features=['latitude'], location='Tromsø'), write_fixture(tmp_path))
+    assert error.value.status_code == 422
+
+
+def test_comparison_explanation_leads_with_detection_counts_and_cautions_about_misses():
+    runs = [
+        {'name': 'Logistic Regression', 'metrics': {'positiveCount': 20, 'negativeCount': 200, 'truePositive': 2, 'falsePositive': 30, 'falseNegative': 18, 'recall': 0.1, 'precision': 0.062, 'brier': 0.03}},
+        {'name': 'Random Forest', 'metrics': {'positiveCount': 20, 'negativeCount': 200, 'truePositive': 2, 'falsePositive': 30, 'falseNegative': 18, 'recall': 0.1, 'precision': 0.062, 'brier': 0.03}},
+    ]
+
+    explanation = comparison_explanation(runs)
+
+    assert 'detected 2 of 20 favourable periods' in explanation
+    assert 'missed 18' in explanation
+    assert 'It missed most favourable periods.' in explanation
+    assert 'neither is a clear practical winner' in explanation.lower()
 
 
 def test_unknown_variable_rejected(tmp_path):

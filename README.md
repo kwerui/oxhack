@@ -11,7 +11,7 @@ This prototype intentionally does **not** claim to forecast real aurora sighting
 ## What the visitor does
 
 1. Choose **Tromsø** or **Reykjavík**.
-2. Select from **12 inputs**: temperature, cloud cover, wind speed, sea-level pressure, Kp, solar wind speed, geographic latitude, IMF Bz, Sun elevation (darkness), Moon illumination, Moon altitude and assumed light pollution.
+2. Select from **10 evaluated inputs**: temperature, cloud cover, wind speed, sea-level pressure, Kp, solar wind speed, IMF Bz, Sun elevation (darkness), Moon illumination and Moon altitude. Coordinates remain in use for location-specific data and astronomy, but latitude is not an hourly predictor. Light pollution is unavailable because a measured worldwide source is not bundled; it is never replaced with an assumption.
 3. Choose **Logistic Regression**, **Random Forest**, or **Compare Both**, then click **Run experiment**. Each model trains on the same older historical hours and tests on the same later, unseen hours.
 4. Inspect precision, recall, F1 and Brier score alongside hourly probabilities and whether a simple **GO / WAIT** decision (50% threshold) would have matched the proxy.
 5. Remove Bz or a weather variable and rerun. The resulting **Fork the Model** experiment can be compared against earlier versions without assuming that more inputs or a more complex model is better.
@@ -61,7 +61,7 @@ The test fixtures are **synthetic** to check the algorithm works; synthetic valu
 - **NASA OMNI2 hourly archive:** Kp, solar wind speed, IMF Bz (GSM). Verified 55-field annual records and supported 56/57-field variants are parsed. Kp is a three-hour index; an earlier completed interval is used as a model feature.
 - **Open-Meteo Historical Weather (ERA5):** temperature, clouds, wind, pressure for two northern cities, joined on UTC hourly timestamps. ERA5 is retrospective reanalysis, not a forecast issued at the original decision time.
 - **Astral library:** derived Sun elevation and approximate Moon illumination / altitude, calculated from timestamp and location. Future Sun/Moon positions are known in advance; they are *not* future-observed weather.
-- **Light pollution:** **assumed Bortle class** per city, not measured satellite data, so it cannot establish the effect of actual light pollution.
+- **Light pollution:** unavailable as a model input. Legacy files may contain assumed Bortle values, but AuroraTime rejects and does not train on them because no measured worldwide source is bundled.
 
 See [docs/data-sources.md](docs/data-sources.md) for source links and important limitations.
 
@@ -94,7 +94,7 @@ See [docs/data-sources.md](docs/data-sources.md) for source links and important 
 ## Known limitations
 
 - The outcome is **not verified aurora visibility**. To make that claim, we'd need trustworthy aurora observations/sighting labels, and likely a better target definition that includes geographic and geomagnetic factors.
-- Sparse proxy positives are reported rather than turned into a model-winner claim. Geographic latitude and assumed Bortle class are constants within a location, so they cannot explain hourly variation.
+- Sparse proxy positives are reported rather than turned into a model-winner claim. Geographic latitude is used for location data and astronomy, not as a model feature, because it is constant within a location. Light pollution is not evaluated without measured data.
 - Kp and hourly reanalysis observations are **historical**, not guaranteed available instantly for real-life 24-hour-ahead decisions; operational forecasting would require truly available-at-issue-time inputs and realistic latency handling.
 - Temperature and wind mainly relate to comfort and travel decisions. Moon and light pollution affect viewing, but are not part of this first rule-defined target, so selecting them cannot validate their real-world viewing impact.
 - No AI agent, spatiotemporal heatmap, trading automation, or World Bank connection is included in this scoped version.
