@@ -51,6 +51,8 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
 export const VARIABLES = VARIABLE_GROUPS.flatMap(group => group.variables);
 export type Feature = Variable['key'];
 export type ModelChoice = 'logistic_regression' | 'random_forest' | 'compare';
+export type ExperimentLocation = { name: string; latitude?: number; longitude?: number };
+export type PreparedLocation = { location: string; coordinates: { latitude: number; longitude: number } | null; historicalRowCount: number };
 
 export type ModelMetrics = {
   brier: number;
@@ -72,39 +74,65 @@ export type ModelRun = {
 };
 
 export type ModelResult = {
+  horizonHours: 24;
   location: string;
   features: Feature[];
   label: string;
   model: string;
   modelSelection: ModelChoice;
   trainCount: number;
+  validationCount: number;
   testCount: number;
   trainFrom: string;
   trainUntil: string;
+  validationFrom: string;
+  validationUntil: string;
   testFrom: string;
   testUntil: string;
   metrics: ModelMetrics;
   hours: { hour: string; probability: number; observedProxy: number }[];
   modelRuns: ModelRun[];
   comparisonExplanation: string;
+  coordinates: { latitude: number; longitude: number } | null;
+  warnings: string[];
   limitations: string;
 };
 
-export async function runModel(features: Feature[], location: string, model: ModelChoice): Promise<ModelResult> {
-  let response: Response;
+type RequestOptions = { signal?: AbortSignal };
+
+async function auroraRequest(path: string, body: object, options?: RequestOptions): Promise<Response> {
   try {
-    response = await fetch('/api/v1/aurora/evaluate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ features, location, model }),
+    return await fetch(path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: options?.signal,
     });
-  } catch {
+  } catch (error) {
+    if ((error as { name?: string }).name === 'AbortError') throw error;
     throw new Error('Cannot contact Python. Start the backend on port 8000.');
   }
+}
+
+export async function prepareLocation(location: ExperimentLocation, options?: RequestOptions): Promise<PreparedLocation> {
+  const response = await auroraRequest('/api/v1/aurora/prepare', {
+    location: location.name, latitude: location.latitude, longitude: location.longitude,
+  }, options);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(typeof body?.detail === 'string' ? body.detail : `Python API error ${response.status}`);
+  }
+  return (await response.json()) as PreparedLocation;
+}
+
+export async function runModel(features: Feature[], location: ExperimentLocation | string, model: ModelChoice, options?: RequestOptions): Promise<ModelResult> {
+  const selected = typeof location === 'string' ? { name: location } : location;
+  const response = await auroraRequest('/api/v1/aurora/evaluate', { features, location: selected.name, latitude: selected.latitude, longitude: selected.longitude, model }, options);
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     const message = body?.detail;
     throw new Error(typeof message === 'string' ? message : `Python API error ${response.status}`);
   }
-  return (await response.json()) as ModelResult;
+  const result = (await response.json()) as ModelResult;
+  if (result.horizonHours !== 24) {
+    throw new Error('This result uses an older prediction horizon and cannot be shown as a 24-hour experiment. Run it again.');
+  }
+  return result;
 }

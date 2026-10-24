@@ -4,7 +4,7 @@
 
 **OxHack 2026 · Theme: Time · HRT: Data for Predictions & Decision Making**
 
-**Pitch:** *Which data actually helps us decide whether to plan an aurora-viewing trip three hours ahead?* Pick input variables, run a small machine-learning experiment, rewind and test a different combination.
+**Pitch:** *Which data actually helps us decide whether to plan an aurora-viewing trip 24 hours ahead?* Pick input variables, run a small machine-learning experiment, rewind and test a different combination.
 
 This prototype intentionally does **not** claim to forecast real aurora sightings. It learns a historical **viewing-conditions proxy**: at the target hour, **Kp ≥ 4, cloud cover ≤ 40%, and solar elevation ≤ −6°**. These thresholds are illustrative, not a scientifically validated sighting label. Probability scores only estimate this proxy.
 
@@ -16,7 +16,7 @@ This prototype intentionally does **not** claim to forecast real aurora sighting
 4. Inspect precision, recall, F1 and Brier score alongside hourly probabilities and whether a simple **GO / WAIT** decision (50% threshold) would have matched the proxy.
 5. Remove Bz or a weather variable and rerun. The resulting **Fork the Model** experiment can be compared against earlier versions without assuming that more inputs or a more complex model is better.
 
-**Time** is central: predictions target **T + 3 hours**, evaluation respects calendar order, and each saved fork lets you change the information available at T.
+**Time** is central: predictions target **T + 24 hours**, evaluation respects calendar order, and each saved fork lets you change the information available at T.
 
 ## Start on macOS
 
@@ -33,7 +33,7 @@ python scripts/download_aurora_data.py
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-The data download fetches real **2024** historical observations and may take several minutes. It needs internet and can fail if either provider is unavailable. **Do not display or invent model accuracy scores when the download fails.** If your previous `.venv` was copied from another folder, rename/remove it before recreating it.
+The data download fetches real **2024 training**, **2025 validation**, and all actually available **2026 held-out** observations. It records source URLs, download times, response metadata, accepted/rejected records and missing/joined-hour counts in `backend/data/aurora_hours.provenance.json`. Do not display or invent model scores when the download fails or a required period is unavailable.
 
 Check `http://localhost:8000/health` for `{"status":"ok","dataReady":true}`.
 
@@ -58,8 +58,8 @@ The test fixtures are **synthetic** to check the algorithm works; synthetic valu
 
 ## Where data comes from
 
-- **NASA OMNI2 hourly archive:** Kp, solar wind speed, IMF Bz (GSM). Kp is a three-hour index; an earlier completed interval is used as a model feature.
-- **Open-Meteo Historical Weather (ERA5):** temperature, clouds, wind, pressure for two northern cities, joined on UTC hourly timestamps.
+- **NASA OMNI2 hourly archive:** Kp, solar wind speed, IMF Bz (GSM). Verified 55-field annual records and supported 56/57-field variants are parsed. Kp is a three-hour index; an earlier completed interval is used as a model feature.
+- **Open-Meteo Historical Weather (ERA5):** temperature, clouds, wind, pressure for two northern cities, joined on UTC hourly timestamps. ERA5 is retrospective reanalysis, not a forecast issued at the original decision time.
 - **Astral library:** derived Sun elevation and approximate Moon illumination / altitude, calculated from timestamp and location. Future Sun/Moon positions are known in advance; they are *not* future-observed weather.
 - **Light pollution:** **assumed Bortle class** per city, not measured satellite data, so it cannot establish the effect of actual light pollution.
 
@@ -67,9 +67,9 @@ See [docs/data-sources.md](docs/data-sources.md) for source links and important 
 
 ## How the model works (simple explanation)
 
-1. We read conditions at hour **T**; for example, cloud cover and an earlier completed Kp measurement. Sun and Moon locations for **T+3** can be computed in advance.
-2. We compare against the **observed rule outcome at T+3**, using real historical Kp, clouds and Sun position.
-3. We train one or both models on the earlier 75% of timestamps for the selected city and leave a 3-hour gap before the held-out test period. Both models receive the same selected inputs and exactly the same rows.
+1. We read conditions at hour **T**; for example, cloud cover and a Kp interval completed by T. Sun and Moon locations for **T+24** can be computed in advance.
+2. We compare against the retrospective rule outcome at **T+24**. Its Kp value is the completed three-hour interval ending at T+24, not an interval that extends beyond the target time.
+3. We train on 2024, choose classification thresholds on 2025, then evaluate once on available 2026 data. Both models receive the same selected inputs and exactly the same rows.
 4. **Logistic Regression** estimates a probability from a weighted combination of inputs. **Random Forest** averages many small decision trees, allowing it to learn more complex patterns. Neither is automatically better.
 5. The held-out hours are scored using **precision** (how often predicted suitable periods met the rule), **recall** (how many suitable periods were found), **F1** (a balance of precision and recall), and **Brier score** (probability error; lower is better).
 6. We also score a **naive baseline** that always predicts the training positive rate. This gives a reality check: adding more variables or model complexity does not automatically improve the result.
@@ -89,12 +89,12 @@ See [docs/data-sources.md](docs/data-sources.md) for source links and important 
 
 ### 40-second technical explanation for judges
 
-> AuroraTime is a model lab for experimenting with decisions over time. We load historical NASA space-weather data and ERA5 weather observations, then let users choose inputs and compare Logistic Regression with Random Forest on exactly the same historical timeline. The prediction target is whether the sky meets an explicitly defined suitability rule three hours later. We train only on past dates, evaluate predictions on unseen later dates and compare against a simple baseline. **Fork the Model** keeps configurations easy to compare. This is a historical experiment with transparent limitations, not a live aurora-alert service.
+> AuroraTime is a model lab for experimenting with decisions over time. We load historical NASA space-weather data and ERA5 weather observations, then let users choose inputs and compare Logistic Regression with Random Forest on exactly the same historical timeline. The prediction target is whether the sky meets an explicitly defined suitability rule 24 hours later. We train only on past dates, evaluate predictions on unseen later dates and compare against a simple baseline. **Fork the Model** keeps configurations easy to compare. This is a historical experiment with transparent limitations, not a live aurora-alert service.
 
 ## Known limitations
 
 - The outcome is **not verified aurora visibility**. To make that claim, we'd need trustworthy aurora observations/sighting labels, and likely a better target definition that includes geographic and geomagnetic factors.
-- Two locations and one historical year give limited evidence. City latitude and assumed Bortle class are confounded with location.
-- Kp and hourly reanalysis observations are **historical**, not guaranteed available instantly for real-life 3-hour-ahead decisions; operational forecasting would require truly available-at-issue-time inputs and realistic latency handling.
+- Sparse proxy positives are reported rather than turned into a model-winner claim. Geographic latitude and assumed Bortle class are constants within a location, so they cannot explain hourly variation.
+- Kp and hourly reanalysis observations are **historical**, not guaranteed available instantly for real-life 24-hour-ahead decisions; operational forecasting would require truly available-at-issue-time inputs and realistic latency handling.
 - Temperature and wind mainly relate to comfort and travel decisions. Moon and light pollution affect viewing, but are not part of this first rule-defined target, so selecting them cannot validate their real-world viewing impact.
 - No AI agent, spatiotemporal heatmap, trading automation, or World Bank connection is included in this scoped version.

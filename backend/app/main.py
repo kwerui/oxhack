@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .aurora import DATA_PATH, FEATURES, ModelRequest, evaluate_model
+from .aurora import DATA_PATH, FEATURES, LocationRequest, ModelRequest, evaluate_model, prepare_location
 
 app = FastAPI(title="AuroraTime", version="0.2.0")
 app.add_middleware(
@@ -27,3 +27,8 @@ def variables():
 @app.post("/api/v1/aurora/evaluate")
 def run_model(request: ModelRequest):
     return evaluate_model(request)
+
+
+@app.post("/api/v1/aurora/prepare")
+def prepare_model_location(request: LocationRequest):
+    return prepare_location(request)

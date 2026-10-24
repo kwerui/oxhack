@@ -6,16 +6,19 @@ from datetime import datetime, timedelta
 import pytest
 from fastapi import HTTPException
 
-from app.aurora import FEATURES, ModelRequest, evaluate_model, make_examples, viewing_proxy
+from app import aurora
+from app.aurora import FEATURES, LocationRequest, ModelRequest, evaluate_model, make_examples, prepare_location, viewing_proxy
+from app.location_data import cache_path_for, coordinate_label
 from scripts.download_aurora_data import parse_omni_line
 
 
 def fixture_rows():
     rows = []
     for location, latitude, bortle in [('Tromsø', 69.65, 5), ('Reykjavík', 64.15, 6)]:
-        for hour in range(1000):
-            rows.append({
-                'time': (datetime(2024, 1, 1) + timedelta(hours=hour)).isoformat(timespec='minutes'),
+        for year in (2024, 2025, 2026):
+            for hour in range(1000):
+                rows.append({
+                'time': (datetime(year, 1, 1) + timedelta(hours=hour)).isoformat(timespec='minutes'),
                 'location': location,
                 'latitude': latitude,
                 'temperature': -6 + hour % 19,
@@ -51,16 +54,23 @@ def test_proxy_uses_kp_clouds_and_sun():
     assert viewing_proxy({**sky, 'kp': 1}) == 0
 
 
-def test_features_do_not_use_future_weather(tmp_path):
+def test_worldwide_location_has_a_stable_cache_key_and_readable_coordinate_label(tmp_path):
+    assert cache_path_for(51.5074, -0.1278, tmp_path).name == '51.5074_-0.1278.csv'
+    assert coordinate_label(51.5074, -0.1278) == '51.51° N, 0.13° W'
+
+
+def test_features_do_not_use_future_weather_or_an_unfinished_target_kp_interval(tmp_path):
     rows = fixture_rows()
     samples = make_examples(rows)
     first = next(sample for sample in samples if sample['location'] == 'Tromsø')
     assert first['time'] == '2024-01-01T03:00'
-    assert first['futureTime'] == '2024-01-01T06:00'
+    assert first['futureTime'] == '2024-01-02T03:00'
     assert first['values']['cloud'] == float(rows[3]['cloud'])
     assert first['values']['kp'] == float(rows[0]['kp'])  # previous completed interval
-    assert first['values']['sun_elevation'] == float(rows[6]['sun_elevation'])  # known astronomy
-    assert first['target'] == viewing_proxy(rows[6])
+    assert first['values']['sun_elevation'] == float(rows[27]['sun_elevation'])  # known astronomy
+    assert first['targetKpTime'] == '2024-01-02T00:00'
+    expected_target = {**rows[27], 'kp': rows[24]['kp']}
+    assert first['target'] == viewing_proxy(expected_target)
 
 
 def test_model_scores_unseen_hours_from_selected_city(tmp_path):
@@ -105,6 +115,23 @@ def test_unknown_variable_rejected(tmp_path):
     with pytest.raises(HTTPException) as error:
         evaluate_model(ModelRequest(features=['mystery']), write_fixture(tmp_path))
     assert error.value.status_code == 422
+
+
+def test_coordinate_requests_are_prepared_and_evaluated_at_the_exact_requested_coordinates(tmp_path, monkeypatch):
+    requested = {'location': 'Test point', 'latitude': 51.5074, 'longitude': -0.1278}
+    calls = []
+
+    def rows_for_exact_coordinates(location, latitude, longitude, _path):
+        calls.append((location, latitude, longitude))
+        return [dict(row, location=location) for row in fixture_rows() if row['location'] == 'Tromsø']
+
+    monkeypatch.setattr(aurora, 'historical_rows', rows_for_exact_coordinates)
+    prepared = prepare_location(LocationRequest(**requested), write_fixture(tmp_path))
+    result = evaluate_model(ModelRequest(features=['cloud', 'kp'], **requested), write_fixture(tmp_path))
+
+    assert prepared['coordinates'] == {'latitude': 51.5074, 'longitude': -0.1278}
+    assert result['coordinates'] == {'latitude': 51.5074, 'longitude': -0.1278}
+    assert calls == [('Test point', 51.5074, -0.1278), ('Test point', 51.5074, -0.1278)]
 
 
 def test_omni_parses_both_supported_record_lengths():
