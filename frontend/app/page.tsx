@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { runModel, VARIABLES, VARIABLE_GROUPS, type Feature, type ModelResult } from '../lib/aurora';
+import { runModel, VARIABLES, VARIABLE_GROUPS, type Feature, type ModelChoice, type ModelResult } from '../lib/aurora';
 
 // A simple starting model. Add/remove features to create a new fork.
 const DEFAULT_FEATURES: Feature[] = [
@@ -18,6 +18,7 @@ function percentage(value: number) {
 export default function Home() {
   const [location, setLocation] = useState('Tromsø');
   const [features, setFeatures] = useState<Feature[]>(DEFAULT_FEATURES);
+  const [modelChoice, setModelChoice] = useState<ModelChoice>('logistic_regression');
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selected, setSelected] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -33,7 +34,7 @@ export default function Home() {
     setLoading(true);
     setError('');
     try {
-      const result = await runModel(features, location);
+      const result = await runModel(features, location, modelChoice);
       const branch = { name: `Fork ${branches.length + 1}`, result };
       setBranches(previous => [...previous, branch]);
       setSelected(branches.length);
@@ -50,6 +51,7 @@ export default function Home() {
     setSelected(index);
     setLocation(branch.result.location);
     setFeatures([...branch.result.features]);
+    setModelChoice(branch.result.modelSelection);
   }
 
   const active = branches[selected]?.result;
@@ -98,6 +100,16 @@ export default function Home() {
           </select>
           <p className="field-tip">Both locations are included in the training dataset. All times are UTC.</p>
         </div>
+
+        <fieldset className="model-choice">
+          <legend className="field-title">Model to evaluate</legend>
+          <p className="field-tip">All options use the same selected variables, location, chronological split, and three-hour target.</p>
+          <div className="model-options">
+            <label><input type="radio" name="model" value="logistic_regression" checked={modelChoice === 'logistic_regression'} onChange={() => setModelChoice('logistic_regression')} /> Logistic Regression <small>Simple probability baseline</small></label>
+            <label><input type="radio" name="model" value="random_forest" checked={modelChoice === 'random_forest'} onChange={() => setModelChoice('random_forest')} /> Random Forest <small>Many small decision trees</small></label>
+            <label><input type="radio" name="model" value="compare" checked={modelChoice === 'compare'} onChange={() => setModelChoice('compare')} /> Compare Both <small>Same held-out hours, side by side</small></label>
+          </div>
+        </fieldset>
 
         <div className="feature-groups">
           <div className="variable-heading">
@@ -167,7 +179,7 @@ export default function Home() {
                 onClick={() => openBranch(index)}
               >
                 <b>{branch.name}</b>
-                <small>{branch.result.features.length} variables · {branch.result.location}</small>
+                <small>{branch.result.features.length} variables · {branch.result.model}</small>
               </button>
             ))}
           </div>
@@ -176,7 +188,7 @@ export default function Home() {
             <>
               <section className="stats" aria-label="Measured results on unseen historical hours">
                 <article className="panel stat">
-                  <span>Model Brier score <i>(lower is better)</i></span>
+                  <span>{active.model} Brier score <i>(lower is better)</i></span>
                   <strong>{active.metrics.brier.toFixed(3)}</strong>
                   <small>Baseline: {active.metrics.baselineBrier.toFixed(3)}</small>
                 </article>
@@ -191,17 +203,46 @@ export default function Home() {
                   <small>Fraction of proxy-positive hours detected</small>
                 </article>
                 <article className="panel stat">
+                  <span>F1 score <i>(precision + recall)</i></span>
+                  <strong>{percentage(active.metrics.f1)}</strong>
+                  <small>Balances positive prediction quality and coverage</small>
+                </article>
+                <article className="panel stat">
                   <span>Test observations</span>
                   <strong>{active.testCount.toLocaleString()}</strong>
                   <small>Later observations held out from training</small>
                 </article>
               </section>
 
+              <section className="panel model-results">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">MODEL COMPARISON</p>
+                    <h2>Results on the same unseen hours</h2>
+                    <p>{active.comparisonExplanation}</p>
+                  </div>
+                </div>
+                <div className="comparison-table-wrap">
+                  <table>
+                    <thead><tr><th>Metric</th>{active.modelRuns.map(run => <th key={run.key}>{run.name}</th>)}</tr></thead>
+                    <tbody>
+                      <tr><td>Precision</td>{active.modelRuns.map(run => <td key={run.key}>{percentage(run.metrics.precision)}</td>)}</tr>
+                      <tr><td>Recall</td>{active.modelRuns.map(run => <td key={run.key}>{percentage(run.metrics.recall)}</td>)}</tr>
+                      <tr><td>F1 score</td>{active.modelRuns.map(run => <td key={run.key}>{percentage(run.metrics.f1)}</td>)}</tr>
+                      <tr><td>Brier score ↓</td>{active.modelRuns.map(run => <td key={run.key}>{run.metrics.brier.toFixed(3)}</td>)}</tr>
+                      <tr><td>Baseline Brier ↓</td>{active.modelRuns.map(run => <td key={run.key}>{run.metrics.baselineBrier.toFixed(3)}</td>)}</tr>
+                      <tr><td>Positive / negative outcomes</td>{active.modelRuns.map(run => <td key={run.key}>{run.metrics.positiveCount} / {run.metrics.negativeCount}</td>)}</tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="metric-help">Precision: how often predicted suitable periods met the rule. Recall: how many suitable periods were found. F1 balances both. Brier score is probability error; lower is better.</p>
+              </section>
+
               <section className="panel hourly-panel">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">HOURLY OUTLOOK / RETROSPECTIVE</p>
-                    <h2>Last 24 test hours · {active.location}</h2>
+                    <h2>Last 24 test hours · {active.location} · {active.model}</h2>
                     <p>Blue bars estimate whether our sky-condition rule will be met. GO means the model passed a 50% decision threshold; dots indicate actual historical conditions, not verified sightings.</p>
                   </div>
                 </div>
@@ -234,11 +275,12 @@ export default function Home() {
                 </div>
                 <div className="comparison-table-wrap">
                   <table>
-                    <thead><tr><th>Fork</th><th>Variables</th><th>Brier ↓</th><th>Baseline ↓</th><th>Precision</th><th>Recall</th></tr></thead>
+                    <thead><tr><th>Fork</th><th>Model</th><th>Variables</th><th>Brier ↓</th><th>Baseline ↓</th><th>Precision</th><th>Recall</th></tr></thead>
                     <tbody>
                       {branches.map((branch, index) => (
                         <tr key={index} className={selected === index ? 'highlight-row' : ''}>
                           <td>{branch.name}</td>
+                          <td>{branch.result.model}</td>
                           <td>{branch.result.features.length}</td>
                           <td>{branch.result.metrics.brier.toFixed(3)}</td>
                           <td>{branch.result.metrics.baselineBrier.toFixed(3)}</td>
@@ -254,7 +296,8 @@ export default function Home() {
               <section className="notes">
                 <div className="panel">
                   <p className="eyebrow">HOW WE TRAIN</p>
-                  <p>We train logistic regression using {active.trainCount.toLocaleString()} earlier observations and test on {active.testCount.toLocaleString()} unseen hours in {active.location}. A three-hour gap prevents future-label leakage.</p>
+                  <p>We train {active.modelSelection === 'compare' ? 'both models' : active.model} using {active.trainCount.toLocaleString()} earlier observations and test on {active.testCount.toLocaleString()} unseen hours in {active.location}. A three-hour gap prevents future-label leakage.</p>
+                  <p>Training range: {active.trainFrom.slice(0, 10)} to {active.trainUntil.slice(0, 10)}. Test range: {active.testFrom.slice(0, 10)} to {active.testUntil.slice(0, 10)}.</p>
                   <p>Selected inputs: {active.features.map(key => VARIABLES.find(variable => variable.key === key)?.name).join(', ')}.</p>
                 </div>
                 <div className="panel caution">

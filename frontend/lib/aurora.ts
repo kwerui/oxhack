@@ -50,35 +50,53 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
 
 export const VARIABLES = VARIABLE_GROUPS.flatMap(group => group.variables);
 export type Feature = Variable['key'];
+export type ModelChoice = 'logistic_regression' | 'random_forest' | 'compare';
+
+export type ModelMetrics = {
+  brier: number;
+  baselineBrier: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  auc: number | null;
+  positiveRate: number;
+  positiveCount: number;
+  negativeCount: number;
+};
+
+export type ModelRun = {
+  key: Exclude<ModelChoice, 'compare'>;
+  name: string;
+  metrics: ModelMetrics;
+  hours: { hour: string; probability: number; observedProxy: number }[];
+};
 
 export type ModelResult = {
   location: string;
   features: Feature[];
   label: string;
   model: string;
+  modelSelection: ModelChoice;
   trainCount: number;
   testCount: number;
+  trainFrom: string;
   trainUntil: string;
   testFrom: string;
-  metrics: {
-    brier: number;
-    baselineBrier: number;
-    precision: number;
-    recall: number;
-    auc: number | null;
-    positiveRate: number;
-  };
+  testUntil: string;
+  metrics: ModelMetrics;
   hours: { hour: string; probability: number; observedProxy: number }[];
+  modelRuns: ModelRun[];
+  comparisonExplanation: string;
   limitations: string;
 };
 
-export async function runModel(features: Feature[], location: string): Promise<ModelResult> {
+export async function runModel(features: Feature[], location: string, model: ModelChoice): Promise<ModelResult> {
   let response: Response;
   try {
     response = await fetch('/api/v1/aurora/evaluate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ features, location }),
+      body: JSON.stringify({ features, location, model }),
     });
   } catch {
     throw new Error('Cannot contact Python. Start the backend on port 8000.');

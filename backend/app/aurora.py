@@ -8,12 +8,14 @@ import csv
 from datetime import datetime, timedelta
 from math import isfinite
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import brier_score_loss, precision_score, recall_score, roc_auc_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import brier_score_loss, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -45,6 +47,7 @@ KNOWN_IN_ADVANCE = {'sun_elevation', 'moon_phase', 'moon_altitude'}
 class ModelRequest(BaseModel):
     features: list[str] = Field(min_length=1, max_length=len(FEATURES))
     location: str = 'Tromsø'
+    model: Literal['logistic_regression', 'random_forest', 'compare'] = 'logistic_regression'
 
 
 def read_observations(path=DATA_PATH):
@@ -103,6 +106,70 @@ def make_examples(rows):
     return sorted(examples, key=lambda sample: (sample['time'], sample['location']))
 
 
+def build_model(model_name):
+    """Keep each algorithm definition short and reproducible."""
+    if model_name == 'logistic_regression':
+        # Scaling is fit only on the training hours inside this pipeline.
+        return make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000))
+    return RandomForestClassifier(n_estimators=120, min_samples_leaf=2, random_state=42, n_jobs=1)
+
+
+def evaluate_run(model_name, x_train, y_train, x_test, y_test, test):
+    """Fit one model and calculate metrics from the same held-out hours."""
+    model = build_model(model_name)
+    model.fit(x_train, y_train)
+    probabilities = model.predict_proba(x_test)[:, 1]
+    predicted_classes = (probabilities >= 0.5).astype(int)
+    baseline = np.full(len(y_test), float(y_train.mean()))
+    auc = float(roc_auc_score(y_test, probabilities)) if len(np.unique(y_test)) == 2 else None
+
+    names = {
+        'logistic_regression': 'Logistic Regression',
+        'random_forest': 'Random Forest',
+    }
+    return {
+        'key': model_name,
+        'name': names[model_name],
+        'metrics': {
+            'brier': round(float(brier_score_loss(y_test, probabilities)), 4),
+            'baselineBrier': round(float(brier_score_loss(y_test, baseline)), 4),
+            'precision': round(float(precision_score(y_test, predicted_classes, zero_division=0)), 3),
+            'recall': round(float(recall_score(y_test, predicted_classes, zero_division=0)), 3),
+            'f1': round(float(f1_score(y_test, predicted_classes, zero_division=0)), 3),
+            'auc': round(auc, 3) if auc is not None else None,
+            'positiveRate': round(float(y_test.mean()) * 100, 1),
+            'positiveCount': int(y_test.sum()),
+            'negativeCount': int(len(y_test) - y_test.sum()),
+        },
+        'hours': [
+            {
+                'hour': sample['futureTime'],
+                'probability': round(float(probability) * 100, 1),
+                'observedProxy': sample['target'],
+            }
+            for sample, probability in zip(test[-24:], probabilities[-24:])
+        ],
+    }
+
+
+def comparison_explanation(runs):
+    """Describe only measured differences; never declare a universal winner."""
+    if len(runs) == 1:
+        return 'These scores describe this model on later historical hours it did not train on.'
+
+    logistic, forest = runs
+    statements = []
+    if forest['metrics']['recall'] > logistic['metrics']['recall']:
+        statements.append('Random Forest found more suitable historical periods (higher recall).')
+    elif logistic['metrics']['recall'] > forest['metrics']['recall']:
+        statements.append('Logistic Regression found more suitable historical periods (higher recall).')
+    if forest['metrics']['brier'] < logistic['metrics']['brier']:
+        statements.append('Random Forest had lower probability error (Brier score).')
+    elif logistic['metrics']['brier'] < forest['metrics']['brier']:
+        statements.append('Logistic Regression had lower probability error (Brier score).')
+    return ' '.join(statements) or 'The models had the same recall and probability error on this historical test.'
+
+
 def evaluate_model(request: ModelRequest, data_path=DATA_PATH):
     chosen = list(dict.fromkeys(request.features))
     if any(feature not in FEATURES for feature in chosen):
@@ -110,7 +177,9 @@ def evaluate_model(request: ModelRequest, data_path=DATA_PATH):
     if request.location not in LOCATION_NAMES:
         raise HTTPException(status_code=422, detail='Choose Tromsø or Reykjavík.')
 
-    examples = make_examples(read_observations(data_path))
+    # Location is fixed before splitting, so both models learn from the same city and hours.
+    examples = [sample for sample in make_examples(read_observations(data_path))
+                if sample['location'] == request.location]
     if len(examples) < 200:
         raise HTTPException(status_code=422, detail='Not enough historical hourly records for evaluation.')
 
@@ -119,10 +188,7 @@ def evaluate_model(request: ModelRequest, data_path=DATA_PATH):
     cutoff = datetime.fromisoformat(times[int(0.75 * len(times))])
     gap = cutoff - timedelta(hours=HOURS_AHEAD)
     train = [sample for sample in examples if datetime.fromisoformat(sample['time']) < gap]
-    # The chosen city's metrics must use ONLY that city's later held-out records.
-    test = [sample for sample in examples
-            if datetime.fromisoformat(sample['time']) >= cutoff
-            and sample['location'] == request.location]
+    test = [sample for sample in examples if datetime.fromisoformat(sample['time']) >= cutoff]
     if len(train) < 100 or len(test) < 50:
         raise HTTPException(status_code=422, detail='Not enough chronological test records.')
 
@@ -133,42 +199,30 @@ def evaluate_model(request: ModelRequest, data_path=DATA_PATH):
     if len(np.unique(y_train)) < 2:
         raise HTTPException(status_code=422, detail='Training data has only one outcome. Need more history.')
 
-    # Logistic regression gives a probability and is straightforward to explain.
-    # StandardScaler handles variables measured in different units.
-    model = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000))
-    model.fit(x_train, y_train)
-    probabilities = model.predict_proba(x_test)[:, 1]
-    predicted_classes = (probabilities >= 0.5).astype(int)
-
-    # Compare against a simple baseline: always predict the average training rate.
-    baseline = np.full(len(y_test), float(y_train.mean()))
-    auc = float(roc_auc_score(y_test, probabilities)) if len(np.unique(y_test)) == 2 else None
+    selected_models = (
+        ['logistic_regression', 'random_forest']
+        if request.model == 'compare'
+        else [request.model]
+    )
+    runs = [evaluate_run(name, x_train, y_train, x_test, y_test, test) for name in selected_models]
+    primary = runs[0]
 
     return {
         'location': request.location,
         'features': chosen,
         'label': '3-hour viewing-conditions proxy: Kp ≥ 4, cloud ≤ 40%, Sun ≤ −6°',
-        'model': 'Logistic regression',
+        'model': primary['name'],
+        'modelSelection': request.model,
         'trainCount': len(train),
         'testCount': len(test),
+        'trainFrom': train[0]['time'],
         'trainUntil': gap.isoformat(timespec='minutes'),
         'testFrom': cutoff.isoformat(timespec='minutes'),
-        'metrics': {
-            'brier': round(float(brier_score_loss(y_test, probabilities)), 4),
-            'baselineBrier': round(float(brier_score_loss(y_test, baseline)), 4),
-            'precision': round(float(precision_score(y_test, predicted_classes, zero_division=0)), 3),
-            'recall': round(float(recall_score(y_test, predicted_classes, zero_division=0)), 3),
-            'auc': round(auc, 3) if auc is not None else None,
-            'positiveRate': round(float(y_test.mean()) * 100, 1),
-        },
-        'hours': [
-            {
-                'hour': sample['futureTime'],
-                'probability': round(float(probability) * 100, 1),
-                'observedProxy': sample['target'],
-            }
-            for sample, probability in zip(test[-24:], probabilities[-24:])
-        ],
+        'testUntil': test[-1]['time'],
+        'metrics': primary['metrics'],
+        'hours': primary['hours'],
+        'modelRuns': runs,
+        'comparisonExplanation': comparison_explanation(runs),
         'limitations': (
             'This is a historical test of a rule-defined conditions proxy, not confirmed aurora '
             'sightings or live forecasting. The target only uses Kp, cloud cover and Sun elevation. '

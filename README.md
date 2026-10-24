@@ -12,9 +12,9 @@ This prototype intentionally does **not** claim to forecast real aurora sighting
 
 1. Choose **Tromsø** or **Reykjavík**.
 2. Select from **12 inputs**: temperature, cloud cover, wind speed, sea-level pressure, Kp, solar wind speed, geographic latitude, IMF Bz, Sun elevation (darkness), Moon illumination, Moon altitude and assumed light pollution.
-3. Click **Run experiment**. Python trains logistic regression on older historical hours and tests it on later, unseen hours.
-4. Inspect hourly probabilities and whether a simple **GO / WAIT** decision (50% threshold) would have matched the proxy.
-5. Remove Bz or a weather variable and rerun. The resulting **fork** can be compared against earlier versions using Brier score (lower is better), precision and recall.
+3. Choose **Logistic Regression**, **Random Forest**, or **Compare Both**, then click **Run experiment**. Each model trains on the same older historical hours and tests on the same later, unseen hours.
+4. Inspect precision, recall, F1 and Brier score alongside hourly probabilities and whether a simple **GO / WAIT** decision (50% threshold) would have matched the proxy.
+5. Remove Bz or a weather variable and rerun. The resulting **Fork the Model** experiment can be compared against earlier versions without assuming that more inputs or a more complex model is better.
 
 **Time** is central: predictions target **T + 3 hours**, evaluation respects calendar order, and each saved fork lets you change the information available at T.
 
@@ -69,9 +69,10 @@ See [docs/data-sources.md](docs/data-sources.md) for source links and important 
 
 1. We read conditions at hour **T**; for example, cloud cover and an earlier completed Kp measurement. Sun and Moon locations for **T+3** can be computed in advance.
 2. We compare against the **observed rule outcome at T+3**, using real historical Kp, clouds and Sun position.
-3. We train **logistic regression** on the earlier 75% of timestamps and leave a 3-hour gap before the held-out test period.
-4. The selected city's held-out hours are scored using **Brier score**, **precision**, and **recall**. Brier score is the average squared difference between a predicted probability and a 0/1 actual proxy outcome; **lower is better**.
-5. We also score a **naive baseline** that always predicts the training positive rate. This gives a reality check: adding more variables does not automatically improve the result.
+3. We train one or both models on the earlier 75% of timestamps for the selected city and leave a 3-hour gap before the held-out test period. Both models receive the same selected inputs and exactly the same rows.
+4. **Logistic Regression** estimates a probability from a weighted combination of inputs. **Random Forest** averages many small decision trees, allowing it to learn more complex patterns. Neither is automatically better.
+5. The held-out hours are scored using **precision** (how often predicted suitable periods met the rule), **recall** (how many suitable periods were found), **F1** (a balance of precision and recall), and **Brier score** (probability error; lower is better).
+6. We also score a **naive baseline** that always predicts the training positive rate. This gives a reality check: adding more variables or model complexity does not automatically improve the result.
 
 **Example:** Two forks might use `cloud + Kp + Sun elevation` versus the same inputs **plus Bz**. Compare their scores on the *same test period*. That is a test of predictive usefulness, not evidence of causation.
 
@@ -88,7 +89,7 @@ See [docs/data-sources.md](docs/data-sources.md) for source links and important 
 
 ### 40-second technical explanation for judges
 
-> AuroraTime is a model lab for experimenting with decisions over time. We load historical NASA space-weather data and ERA5 weather observations, then let users decide which of twelve variables a logistic-regression model is allowed to use. The prediction target is whether the sky meets an explicitly defined suitability rule three hours later. We train only on past dates, evaluate predictions on unseen later dates and compare against a simple baseline. When the user adds or removes a variable, **Fork the Model** creates a new fork so the results are easy to compare. This is a historical experiment with transparent limitations, not a live aurora-alert service.
+> AuroraTime is a model lab for experimenting with decisions over time. We load historical NASA space-weather data and ERA5 weather observations, then let users choose inputs and compare Logistic Regression with Random Forest on exactly the same historical timeline. The prediction target is whether the sky meets an explicitly defined suitability rule three hours later. We train only on past dates, evaluate predictions on unseen later dates and compare against a simple baseline. **Fork the Model** keeps configurations easy to compare. This is a historical experiment with transparent limitations, not a live aurora-alert service.
 
 ## Known limitations
 

@@ -14,9 +14,12 @@ describe('frontend API client', () => {
     const fetchMock = vi.fn().mockResolvedValue(successfulResponse({}));
     vi.stubGlobal('fetch', fetchMock);
 
-    await runModel(['cloud'], 'Tromsø');
+    await runModel(['cloud'], 'Tromsø', 'compare');
 
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/aurora/evaluate', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({
+      body: JSON.stringify({ features: ['cloud'], location: 'Tromsø', model: 'compare' }),
+    }));
   });
 
   it('sends legacy simulations through the relative Next.js API path', async () => {

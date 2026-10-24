@@ -86,7 +86,9 @@ def test_compare_models_uses_the_same_held_out_hours(tmp_path):
 
     assert result['modelSelection'] == 'compare'
     assert [run['name'] for run in result['modelRuns']] == ['Logistic Regression', 'Random Forest']
-    assert result['modelRuns'][0]['hours'] == result['modelRuns'][1]['hours']
+    first_hours = [(hour['hour'], hour['observedProxy']) for hour in result['modelRuns'][0]['hours']]
+    second_hours = [(hour['hour'], hour['observedProxy']) for hour in result['modelRuns'][1]['hours']]
+    assert first_hours == second_hours
     for run in result['modelRuns']:
         assert 0 <= run['metrics']['brier'] <= 1
         assert 0 <= run['metrics']['f1'] <= 1
