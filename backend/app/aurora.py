@@ -144,10 +144,18 @@ def build_model(model_name):
 
 
 def choose_threshold(y_true, probabilities):
-    """Choose an F1 threshold only on validation data; retain 0.5 for a tie."""
+    """Choose an F1-maximising validation threshold, preferring 0.5 in a tie.
+
+    If 0.5 is not F1-optimal, use the F1-optimal candidate closest to 0.5;
+    the lower candidate resolves an exactly equidistant tie.
+    """
     candidates = np.arange(0.05, 1.0, 0.05)
     scores = [f1_score(y_true, probabilities >= threshold, zero_division=0) for threshold in candidates]
-    return float(candidates[int(np.argmax(scores))]) if len(candidates) else 0.5
+    if not len(candidates):
+        return 0.5
+    best_score = max(scores)
+    best_candidates = candidates[np.isclose(scores, best_score)]
+    return float(best_candidates[np.argmin(np.abs(best_candidates - 0.5))])
 
 
 def _metrics(y_true, probabilities, threshold, training_prevalence):
@@ -220,7 +228,21 @@ def comparison_explanation(runs):
     if same_detection:
         return f"Both models performed the same: {summary(logistic)} Neither is a clear practical winner."
 
-    better_recall = forest if forest['metrics']['recall'] > logistic['metrics']['recall'] else logistic
+    logistic_metrics, forest_metrics = logistic['metrics'], forest['metrics']
+    if logistic_metrics['truePositive'] == forest_metrics['truePositive']:
+        detected = logistic_metrics['truePositive']
+        positives = logistic_metrics['positiveCount']
+        if logistic_metrics['falsePositive'] != forest_metrics['falsePositive']:
+            fewer_false_alarms = min(runs, key=lambda run: run['metrics']['falsePositive'])
+            return (
+                f"{summary(logistic)} {summary(forest)} Both models detected {detected} of {positives} favourable periods. "
+                f"{fewer_false_alarms['name']} raised fewer false alarms "
+                f"({fewer_false_alarms['metrics']['falsePositive']} vs "
+                f"{max(logistic_metrics['falsePositive'], forest_metrics['falsePositive'])})."
+            )
+        return f"{summary(logistic)} {summary(forest)} Both models detected the same number of favourable periods."
+
+    better_recall = forest if forest_metrics['truePositive'] > logistic_metrics['truePositive'] else logistic
     return f"{summary(logistic)} {summary(forest)} {better_recall['name']} found more favourable periods."
 
 

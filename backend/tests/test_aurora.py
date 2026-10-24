@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException
 
 from app import aurora
-from app.aurora import FEATURES, LocationRequest, ModelRequest, comparison_explanation, evaluate_model, make_examples, prepare_location, viewing_proxy
+from app.aurora import FEATURES, LocationRequest, ModelRequest, choose_threshold, comparison_explanation, evaluate_model, make_examples, prepare_location, viewing_proxy
 from app.location_data import cache_path_for, coordinate_label
 from scripts.download_aurora_data import parse_omni_line
 
@@ -139,6 +139,29 @@ def test_comparison_explanation_leads_with_detection_counts_and_cautions_about_m
     assert 'missed 18' in explanation
     assert 'It missed most favourable periods.' in explanation
     assert 'neither is a clear practical winner' in explanation.lower()
+
+
+def test_comparison_explanation_does_not_claim_more_detections_when_only_false_alarms_differ():
+    runs = [
+        {'name': 'Logistic Regression', 'metrics': {'positiveCount': 20, 'negativeCount': 200, 'truePositive': 5, 'falsePositive': 3, 'falseNegative': 15, 'recall': 0.25, 'precision': 0.625, 'brier': 0.03}},
+        {'name': 'Random Forest', 'metrics': {'positiveCount': 20, 'negativeCount': 200, 'truePositive': 5, 'falsePositive': 30, 'falseNegative': 15, 'recall': 0.25, 'precision': 0.143, 'brier': 0.03}},
+    ]
+
+    explanation = comparison_explanation(runs)
+
+    assert 'Both models detected 5 of 20 favourable periods.' in explanation
+    assert 'Logistic Regression raised fewer false alarms (3 vs 30).' in explanation
+    assert 'found more favourable periods' not in explanation
+
+
+def test_choose_threshold_retains_half_when_it_is_an_f1_optimal_tie():
+    # Thresholds 0.25 through 0.60 all classify these two examples perfectly.
+    assert choose_threshold([1, 0], [0.6, 0.2]) == 0.5
+
+
+def test_choose_threshold_keeps_an_f1_optimal_threshold_when_half_is_not_optimal():
+    # No F1-optimal threshold here is 0.5, so selection must not override F1.
+    assert choose_threshold([1, 0], [0.2, 0.1]) == pytest.approx(0.2)
 
 
 def test_unknown_variable_rejected(tmp_path):

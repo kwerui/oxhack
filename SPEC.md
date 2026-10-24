@@ -1,80 +1,37 @@
-# Spec: AuroraTime hackathon starter
+# AuroraTime — Demo Specification
 
-## Objective
+## Purpose
 
-AuroraTime is a local web application for exploring **illustrative** decision scenarios. A user starts from a preset, changes inputs, creates named branches, and compares distributions from deterministic seeded Monte Carlo runs. The first preset is portfolio allocation; the simulation contract is domain-configurable so a STEM model can be added without changing the UI shape. It does not give financial, medical, engineering, or investment advice, and it will visibly state the model assumptions and limitations.
+AuroraTime is a local historical model lab, not a live alert service. It compares Logistic Regression and Random Forest for a transparent 24-hour-ahead viewing-conditions proxy. The proxy is positive only when the target hour has a completed Kp interval of at least 4, cloud cover at most 40%, and Sun elevation at most −6°. It is not a confirmed aurora sighting or scientifically validated visibility label.
 
-### Success criteria
+## User workflow
 
-- A user can select a preset, change numeric variables, simulate a branch, and compare it against another branch.
-- The API validates inputs and produces repeatable results for the same seed and request.
-- Results contain percentile outcomes, probability of loss / threshold failure, drawdown proxy, and explicit model caveats.
-- The React UI presents a time-themed branch timeline, distribution chart, risk summary, loading/error/empty states, and keyboard-accessible controls.
-- A World Bank-compatible data-source adapter is documented with an offline mock fallback and caveats about latency, availability, and causal interpretation.
-- An AI-summary endpoint is disabled unless an environment flag is explicitly set, and works only from supplied simulation statistics.
-- Unit/API tests, type checks, and local run instructions are included.
+1. Select Tromsø, Reykjavík, a searched place, browser location, or exact coordinates.
+2. Select weather, NASA space-weather, and calculated Sun/Moon inputs; latitude is used only to retrieve history and calculate astronomy.
+3. Run Logistic Regression, Random Forest, or both. Save results as forks and compare their stored configuration and metrics.
+4. Read detected periods, missed periods, false alarms, precision, recall, F1, Brier score and the training-prevalence Brier baseline.
 
-## Tech stack
+No measured worldwide light-pollution dataset is bundled. Light pollution and assumed Bortle values are deliberately excluded from selectable model inputs.
 
-- Frontend: Next.js (App Router), React, TypeScript, Recharts, Vitest.
-- Backend: FastAPI, Pydantic, NumPy, pytest.
-- Runtime: two local development servers; no database or external credentials needed for the MVP.
+## Historical protocol
 
-## API contract
+- Examples use information available at hour T to target the proxy at T + 24 hours. Input Kp is an earlier completed interval; Sun and Moon positions at the future target are calculated astronomy, not future-observed weather.
+- 2024 is the training partition. 2025 selects the F1-maximising classification threshold. The chosen model is then refit on 2024–2025 and evaluated once on available 2026 hours.
+- Threshold candidates run from 0.05 to 0.95. If F1 is tied, choose 0.50 when it is tied; otherwise choose the F1-optimal candidate closest to 0.50, then the lower candidate if still tied.
+- Location-specific history is assembled at the requested coordinates. The frontend rejects a backend response whose coordinates differ from the selection.
 
-`GET /api/v1/presets` returns configurable presets.
+## Boundaries and limitations
 
-`POST /api/v1/simulations` accepts `presetId`, `branchName`, `seed`, `runs`, `horizonYears`, and bounded numeric overrides. It returns a simulation id, normalized inputs, histogram bins, percentiles, risk metrics, assumptions, and caveats. Invalid values produce FastAPI's consistent validation response with HTTP 422. The endpoint is compute-only and safe to retry.
+- NASA OMNI2 and Open-Meteo ERA5 are historical data. ERA5 reanalysis and archived space-weather inputs do not establish what would have been available in real time.
+- The target omits viewing factors such as measured light pollution and does not prove that any selected predictor causes visibility.
+- Sparse positives and one held-out calendar period mean metrics can be unstable. Do not claim a universal winner or operational forecasting performance.
+- XGBoost exists only in the offline benchmark script and documentation. It is not an API choice, frontend option, or production model.
 
-`GET /api/v1/data/world-bank/{indicator}` returns a validated, documented adapter response or a local illustrative fallback. It must never silently treat external data as an active market signal.
-
-`POST /api/v1/analysis` returns a deterministic, grounded template analysis from simulation output when `ENABLE_AI_ANALYSIS=true`; otherwise it returns 404. No external model call is required by the starter.
-
-## Commands
+## Local checks
 
 ```sh
-cd backend && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-cd backend && uvicorn app.main:app --reload --port 8000
-cd backend && pytest
-
-cd frontend && npm install
-cd frontend && npm run dev
+cd backend && .venv/bin/python -m pytest -q
 cd frontend && npm run test && npm run lint && npm run typecheck && npm run build
 ```
 
-## Project structure
-
-```text
-backend/app/        FastAPI routes, schemas, engine, presets, adapters
-backend/tests/      simulation and HTTP contract tests
-frontend/app/       Next.js route and global styling
-frontend/components/ interactive timeline, controls, charts, metrics
-frontend/lib/       API client and shared types
-frontend/tests/     UI/unit tests
-docs/               data source, model, and safety notes
-```
-
-## Code style
-
-Use explicit input/output models, camelCase at the JSON boundary, immutable TypeScript state updates, and small pure functions for calculations.
-
-```ts
-const nextBranch = { ...branch, inputs: { ...branch.inputs, annualContribution: value } };
-```
-
-## Testing strategy
-
-- pytest unit tests prove seed reproducibility, sane percentile ordering, and rejection of unsafe inputs.
-- FastAPI tests prove the simulation and preset contracts.
-- Vitest tests cover client-side branch comparison helpers.
-- `npm run typecheck`, lint, frontend build, and pytest run before delivery.
-
-## Boundaries
-
-- Always: validate untrusted input, label outputs illustrative, preserve seed provenance, include assumptions/caveats, run checks.
-- Ask first: add third-party API credentials, persistent storage, auth, real trades/advice, or deployment infrastructure.
-- Never: imply probability estimates are predictions, fabricate data availability, commit credentials, or silently fall back from a live source without labelling it.
-
-## Open questions
-
-- The next domain preset can be chosen after the demo: project delivery risk, climate resilience, or laboratory experiment planning.
+See [README.md](README.md) for setup and [JUDGES_GUIDE.md](JUDGES_GUIDE.md) for a concise demo walkthrough.
