@@ -4,7 +4,7 @@
 
 **OxHack 2026 · Theme: Time · HRT: Data for Predictions & Decision Making**
 
-**Pitch:** *Which data actually helps us decide whether to plan an aurora-viewing trip 24 hours ahead?* Pick input variables, run a small machine-learning experiment, rewind and test a different combination.
+*Which data actually helps us decide whether to plan an aurora-viewing trip 24 hours ahead?* Pick input variables, run a small machine-learning experiment, rewind and test a different combination.
 
 This prototype intentionally does **not** claim to forecast real aurora sightings. It learns a historical **viewing-conditions proxy**: at the target hour, **Kp ≥ 4, cloud cover ≤ 40%, and solar elevation ≤ −6°**. These thresholds are illustrative, not a scientifically validated sighting label. Probability scores only estimate this proxy.
 
@@ -65,7 +65,7 @@ The test fixtures are **synthetic** to check the algorithm works; synthetic valu
 
 See [docs/data-sources.md](docs/data-sources.md) for source links and important limitations.
 
-## How the model works (simple explanation)
+## How the model works
 
 1. We read conditions at hour **T**; for example, cloud cover and a Kp interval completed by T. Sun and Moon locations for **T+24** can be computed in advance.
 2. We compare against the retrospective rule outcome at **T+24**. Its Kp value is the completed three-hour interval ending at T+24, not an interval that extends beyond the target time.
@@ -76,20 +76,6 @@ See [docs/data-sources.md](docs/data-sources.md) for source links and important 
 
 **Example:** Two forks might use `cloud + Kp + Sun elevation` versus the same inputs **plus Bz**. Compare their scores on the *same test period*. That is a test of predictive usefulness, not evidence of causation.
 
-## Files you should know for judging
-
-| File | Purpose |
-|---|---|
-| `frontend/app/page.tsx` | Page, checkboxes, saved model forks and result display |
-| `frontend/lib/aurora.ts` | Variable names, TypeScript types and one API request |
-| `backend/app/main.py` | Three small FastAPI endpoints |
-| `backend/app/aurora.py` | Input selection, hourly examples, training and scoring |
-| `backend/scripts/download_aurora_data.py` | Fetches/joins NASA and Open-Meteo observations and computes astronomy |
-| `backend/tests/test_aurora.py` | Tests model logic and the NASA file parser |
-
-### 40-second technical explanation for judges
-
-> AuroraTime is a model lab for experimenting with decisions over time. We load historical NASA space-weather data and ERA5 weather observations, then let users choose inputs and compare Logistic Regression with Random Forest on exactly the same historical timeline. The prediction target is whether the sky meets an explicitly defined suitability rule 24 hours later. We train only on past dates, evaluate predictions on unseen later dates and compare against a simple baseline. **Fork the Model** keeps configurations easy to compare. This is a historical experiment with transparent limitations, not a live aurora-alert service.
 
 ## Known limitations
 
