@@ -34,4 +34,4 @@ cd backend && .venv/bin/python -m pytest -q
 cd frontend && npm run test && npm run lint && npm run typecheck && npm run build
 ```
 
-See [README.md](README.md) for setup and [JUDGES_GUIDE.md](JUDGES_GUIDE.md) for a concise demo walkthrough.
+See [README.md](README.md) for setup for a concise demo walkthrough.
