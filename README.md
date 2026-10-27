@@ -86,3 +86,4 @@ See [docs/data-sources.md](docs/data-sources.md) for source links and important 
 - Kp and hourly reanalysis observations are **historical**, not guaranteed available instantly for real-life 24-hour-ahead decisions; operational forecasting would require truly available-at-issue-time inputs and realistic latency handling.
 - Temperature and wind mainly relate to comfort and travel decisions. Moon and light pollution affect viewing, but are not part of this first rule-defined target, so selecting them cannot validate their real-world viewing impact.
 - No AI agent, spatiotemporal heatmap, trading automation, or World Bank connection is included in this scoped version.
+
